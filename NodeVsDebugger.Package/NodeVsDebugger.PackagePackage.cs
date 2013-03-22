@@ -275,14 +275,22 @@ namespace NodeVsDebugger_Package
             return null;
         }
 
-        bool IsSupportedRunDocument(EnvDTE.Document doc)
+        private bool IsSupportedRunDocument(EnvDTE.Document doc)
         {
-            var lang = doc.Language;
+            string lang = doc.Language;
             if (lang == "JavaScript" || lang == "TypeScript")
                 return true;
 
-            var ext = Path.GetExtension(doc.FullName);
+            string ext = Path.GetExtension(doc.FullName);
             return ext == ".js" || ext == ".ts";
+        }
+
+        private string GetRunDocumentFileName(string filename)
+        {
+            if (Path.GetExtension(filename) == ".ts")
+                return Path.ChangeExtension(filename, ".js");
+
+            return filename;
         }
 
         private void MenuItemCallbackDocument(object sender, EventArgs e)
@@ -294,7 +302,14 @@ namespace NodeVsDebugger_Package
             var doc = applicationObject.ActiveDocument;
             if (doc != null && IsSupportedRunDocument(doc)) {
                 // TODO: should we save on debug?
-                LaunchDebugTarget(doc.FullName, null);
+
+                string filename = GetRunDocumentFileName(doc.FullName);
+                if (File.Exists(filename)) {
+                    LaunchDebugTarget(filename, null);
+                } else {
+                    WriteOutput("ERROR: Unknown document type: " + doc.FullName);
+                }
+
             } else {
                 WriteOutput("ERROR: A JavaScript document must be active");
             }
