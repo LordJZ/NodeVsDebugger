@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using Microsoft.VisualStudio.Debugger.Interop;
 
 namespace NodeVsDebugger
@@ -61,8 +62,11 @@ namespace NodeVsDebugger
         // Gets the language associated with this document context.
         int IDebugDocumentContext2.GetLanguageInfo(ref string pbstrLanguage, ref Guid pguidLanguage)
         {
-            pbstrLanguage = "JavaScript";
-            pguidLanguage = AD7Guids.guidLanguageJs;
+            if (Path.GetExtension(m_fileName) == ".ts")
+                pbstrLanguage = "TypeScript";
+            else
+                pbstrLanguage = "JavaScript";
+            pguidLanguage = AD7Guids.guidLanguageScript;
             return Constants.S_OK;
         }
 

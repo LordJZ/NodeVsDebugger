@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.Debugger.Interop;
@@ -61,7 +62,7 @@ namespace NodeVsDebugger
                     var funcName = new StringBuilder();
 
                     if (dwFieldSpec.HasFlag(FIF.FIF_FUNCNAME_MODULE))
-                        funcName.Append(System.IO.Path.GetFileName(m_threadContext.script.Name) + "!");
+                        funcName.Append(System.IO.Path.GetFileName(m_documentName) + "!");
 
                     funcName.Append(m_functionName);
 
@@ -85,7 +86,7 @@ namespace NodeVsDebugger
 
             // The debugger is requesting the name of the module for this stack frame.
             if (dwFieldSpec.HasFlag(FIF.FIF_MODULE)) {
-                frameInfo.m_bstrModule = m_threadContext.script.Name;
+                frameInfo.m_bstrModule = m_documentName;
                 frameInfo.m_dwValidFields |= FIF.FIF_MODULE;
             }
 
@@ -193,7 +194,7 @@ namespace NodeVsDebugger
                 if (m_hasSource)
                 {
                     // Assume all lines begin and end at the beginning of the line.
-                    docContext = new AD7DocumentContext(m_documentName, m_lineNum, m_lineNum);
+                    docContext = new AD7DocumentContext(m_documentName, m_lineNum, m_lineNum, m_colNum, m_colNum);
                     return Constants.S_OK;
                 }
             } catch (Exception e) {
@@ -228,8 +229,11 @@ namespace NodeVsDebugger
         // In this sample, all the supported stack frames are C++
         int IDebugStackFrame2.GetLanguageInfo(ref string pbstrLanguage, ref Guid pguidLanguage)
         {
-            pbstrLanguage = "JavaScript";
-            pguidLanguage = AD7Guids.guidLanguageJs;
+            if (Path.GetExtension(m_documentName) == ".ts")
+                pbstrLanguage = "TypeScript";
+            else
+                pbstrLanguage = "JavaScript";
+            pguidLanguage = AD7Guids.guidLanguageScript;
             return Constants.S_OK;
         }
 
