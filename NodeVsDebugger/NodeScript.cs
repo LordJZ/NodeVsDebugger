@@ -35,6 +35,21 @@ namespace NodeVsDebugger
             this.SourceMap = sourceMap;
         }
 
+        public IEnumerable<string> SourceScripts
+        {
+            get
+            {
+                if (this.SourceMap == null || this.SourceMap.SourceFiles.Length == 0) {
+                    yield return this.LocalFile;
+                    yield break;
+                }
+
+                foreach (var scriptName in this.SourceMap.SourceFiles) {
+                    yield return scriptName;
+                }
+            }
+        }
+
         bool IEquatable<NodeScript>.Equals(NodeScript other)
         {
             if (other == null)

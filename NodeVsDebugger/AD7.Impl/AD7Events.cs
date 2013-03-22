@@ -93,10 +93,10 @@ namespace NodeVsDebugger
         {
             module = m_module;
             if (m_fLoad) {
-                debugMessage = String.Concat("Loaded '", m_module.m_script.Name, "'");
+                debugMessage = String.Concat("Loaded '", m_module.Name, "'");
                 fIsLoad = 1;
             } else {
-                debugMessage = String.Concat("Unloaded '", m_module.m_script.Name, "'");
+                debugMessage = String.Concat("Unloaded '", m_module.Name, "'");
                 fIsLoad = 0;
             }
             return Constants.S_OK;

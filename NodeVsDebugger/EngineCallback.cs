@@ -52,11 +52,14 @@ namespace NodeVsDebugger
             if (m_engine.DebuggedProcess != null) {
                 //Debug.Assert(Worker.CurrentThreadId == m_engine.DebuggedProcess.PollThreadId);
             }
-            var ad7Module = new AD7Module(debuggedModule);
-            //debuggedModule.Client = ad7Module;
-            // The sample engine does not support binding breakpoints as modules load since the primary exe is the only module
-            // symbols are loaded for. A production debugger will need to bind breakpoints when a new module is loaded.
-            Send(new AD7ModuleLoadEvent(ad7Module, true /* this is a module load */), null);
+
+            foreach (var scriptName in debuggedModule.SourceScripts) {
+                var ad7Module = new AD7Module(scriptName);
+                //debuggedModule.Client = ad7Module;
+                // The sample engine does not support binding breakpoints as modules load since the primary exe is the only module
+                // symbols are loaded for. A production debugger will need to bind breakpoints when a new module is loaded.
+                Send(new AD7ModuleLoadEvent(ad7Module, true /* this is a module load */), null);
+            }
         }
 
         public void OnModuleUnload(NodeScript debuggedModule)

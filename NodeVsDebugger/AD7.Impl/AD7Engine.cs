@@ -429,7 +429,7 @@ namespace NodeVsDebugger
         public int EnumModules(out IEnumDebugModules2 ppEnum)
         {
             //Debug.Assert(Worker.MainThreadId == Worker.CurrentThreadId);
-            ppEnum = new AD7ModuleEnum(m_debuggedProcess.GetModules().Select(m => new AD7Module(m)).ToArray());
+            ppEnum = new AD7ModuleEnum(m_debuggedProcess.GetModules().SelectMany(m => m.SourceScripts).Select(m => new AD7Module(m)));
             return Constants.S_OK;
         }
 

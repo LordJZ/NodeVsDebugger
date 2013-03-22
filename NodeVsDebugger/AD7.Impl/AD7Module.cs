@@ -7,11 +7,11 @@ namespace NodeVsDebugger
     // this class represents a module loaded in the debuggee process to the debugger. 
     class AD7Module : IDebugModule2, IDebugModule3
     {
-        public readonly NodeScript m_script;
+        public readonly string Name;
 
-        public AD7Module(NodeScript script)
+        public AD7Module(string name)
         {
-            m_script = script;
+            this.Name = name;
         }
 
         #region IDebugModule2 Members
@@ -24,11 +24,11 @@ namespace NodeVsDebugger
                 var info = new MODULE_INFO();
 
                 if ((dwFields & enum_MODULE_INFO_FIELDS.MIF_NAME) != 0) {
-                    info.m_bstrName = System.IO.Path.GetFileName(m_script.Name);
+                    info.m_bstrName = System.IO.Path.GetFileName(this.Name);
                     info.dwValidFields |= enum_MODULE_INFO_FIELDS.MIF_NAME;
                 }
                 if ((dwFields & enum_MODULE_INFO_FIELDS.MIF_URL) != 0) {
-                    info.m_bstrUrl = m_script.Name;
+                    info.m_bstrUrl = this.Name;
                     info.dwValidFields |= enum_MODULE_INFO_FIELDS.MIF_URL;
                 }
                 infoArray[0] = info;
