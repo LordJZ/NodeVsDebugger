@@ -203,9 +203,9 @@ namespace NodeVsDebugger
             dbg.Request("continue", "");
         }
         public List<NodeScript> Modules = new List<NodeScript>();
-        public NodeScript[] GetModules()
+        public IReadOnlyCollection<NodeScript> GetModules()
         {
-            return Modules.ToArray();
+            return Modules;
         }
         public List<DebuggedThread> Threads = new List<DebuggedThread>();
         public DebuggedThread[] GetThreads()
@@ -277,7 +277,7 @@ namespace NodeVsDebugger
 
         internal int SetBreakpoint(string documentName, uint line, uint column)
         {
-            documentName = LocalFileToNodeScript(documentName);
+            TranslateSourceToGenerated(ref documentName, ref line, ref column);
             var resp = dbg.RequestSync("setbreakpoint", new {
                 type = "script",
                 target = documentName,
@@ -291,31 +291,29 @@ namespace NodeVsDebugger
             return -1;
         }
 
-        private string LocalFileToNodeScript(string documentName)
+        public void TranslateSourceToGenerated(ref string documentName, ref uint line, ref uint column)
         {
-            var m = Modules.FirstOrDefault(x => x.LocalFile == documentName);
+            string docName = documentName;
+            var m = Modules.FirstOrDefault(x => x.LocalFile == docName || x.SourceMap != null && x.SourceMap.SourceFiles.Contains(docName));
             if (m != null)
-                return m.Name;
-            return mappings.ToRemote(documentName) ?? documentName;
+            {
+                if (m.LocalFile != documentName && m.SourceMap != null)
+                    m.SourceMap.TranslateSourceToGenerated(ref documentName, ref line, ref column);
+                else
+                    documentName = m.Name;
+            }
+
+            var remoteName = mappings.ToRemote(documentName);
+            if (remoteName != null)
+                documentName = remoteName;
         }
 
-        internal string GetLocalFile(NodeScript script, bool fetchIfNotExists = false)
+        public void TranslateGeneratedToSource(NodeScript generatedScript, out string filename, ref uint line, ref uint column)
         {
-            if (script.LocalFile == null)
-                script.LocalFile = mappings.ToLocal(script.Name);
-            if (script.LocalFile == null && File.Exists(script.Name))
-                script.LocalFile = script.Name;
-            if (fetchIfNotExists && (script.LocalFile == null || !File.Exists(script.LocalFile))) {
-                // fetch actual file
-                var evt = new ManualResetEvent(false);
-                dbg.Request("scripts", new { types = 7, ids = new[] { script.Id }, includeSource = true }, resp => {
-                    var body = resp["body"][0];
-                    tempScriptCache.SaveScript(script, (string)body["source"]);
-                    evt.Set();
-                });
-                evt.WaitOne(200);
-            }
-            return script.LocalFile;
+            if (generatedScript.SourceMap != null)
+                generatedScript.SourceMap.TranslateGeneratedToSource(out filename, ref line, ref column);
+            else
+                filename = generatedScript.Name;
         }
 
         public void RemoveBreakpoint(int breakpointId)
@@ -347,11 +345,96 @@ namespace NodeVsDebugger
             var id = (int)jObject["id"];
             var name = (string)jObject["name"];
             var script = Modules.FirstOrDefault(m => m.Id == id && m.Name == name);
-            if (script == null) {
-                script = new NodeScript(id, name, jObject);
-                Modules.Add(script);
+            if (script == null)
+            {
+                script = AddModule(id, name);
             }
             return script;
+        }
+
+        NodeScript AddModule(int id, string name)
+        {
+            // First resolve by explicit mapping
+            string local = mappings.ToLocal(name);
+
+            // Then try to access the file itself
+            if (local == null && File.Exists(name))
+                local = name;
+
+            // If anything else failed, just get the source code from node.js itself
+            if (local == null || !File.Exists(local))
+            {
+                var evt = new ManualResetEvent(false);
+                dbg.Request("scripts", new { types = 7, ids = new[] { id }, includeSource = true }, resp =>
+                {
+                    var bodies = (JArray)resp["body"];
+                    if (bodies.Any())
+                    {
+                        var body = bodies[0];
+                        local = tempScriptCache.SaveScript(id, name, (string)body["source"]);
+                    }
+                    evt.Set();
+                });
+                evt.WaitOne(200);
+            }
+
+            SourceMap sourceMapping = null;
+            if (local != null && File.Exists(local))
+            {
+                try
+                {
+                    sourceMapping = this.GetSourceMap(local);
+                }
+                catch
+                {
+                }
+            }
+
+            NodeScript script = new NodeScript(id, name, local, sourceMapping);
+            Modules.Add(script);
+            return script;
+        }
+
+        SourceMap GetSourceMap(string file)
+        {
+            string[] lines = File.ReadAllLines(file);
+            int idx = lines.Length - 1;
+            int minIdx = Math.Max(lines.Length - 6, 0);
+            while (idx >= minIdx && string.IsNullOrWhiteSpace(lines[idx]))
+                --idx;
+
+            if (idx < minIdx)
+                return null;
+
+            //@ sourceMappingURL=subscriptions.js.map
+
+            const string prefix = "//@ sourceMappingURL=";
+
+            var line = lines[idx];
+            if (!line.StartsWith(prefix))
+                return null;
+
+            string mapFileName = line.Substring(prefix.Length);
+            if (!Path.IsPathRooted(mapFileName))
+                mapFileName = Path.Combine(Path.GetDirectoryName(file), mapFileName);
+            string mapFileFolder = Path.GetDirectoryName(mapFileName);
+
+            string mappingSource = File.ReadAllText(mapFileName, System.Text.Encoding.ASCII);
+
+            JObject jMapping = JsonConvert.DeserializeObject(mappingSource) as JObject;
+            if (int.Parse(jMapping["version"].ToString()) != 3)
+                return null;
+
+            string root = (string)jMapping["sourceRoot"];
+            var sources = jMapping["sources"].Select(tok => (string)tok);
+            if (!string.IsNullOrWhiteSpace(root))
+                sources = sources.Select(str => Path.IsPathRooted(str) ? str : Path.Combine(root, str));
+
+            sources = sources.Select(str => Path.IsPathRooted(str) ? str : Path.Combine(mapFileFolder, str));
+
+            string data = (string)jMapping["mappings"];
+
+            return SourceMap.ReadSourceMaps(file, sources.ToArray(), data);
         }
     }
 }

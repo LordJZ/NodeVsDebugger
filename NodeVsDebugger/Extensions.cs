@@ -20,15 +20,17 @@ namespace NodeVsDebugger
     {
         public static JObject Lookup(this Dictionary<long, JObject> refs, long refHandle)
         {
-            return refs.ContainsKey(refHandle) ? refs[refHandle] : null;
+            JObject obj;
+            refs.TryGetValue(refHandle, out obj);
+            return obj;
         }
 
         public static JObject Lookup(this Dictionary<long, JObject> refs, JToken refContainer)
         {
             var refToken = refContainer["ref"];
-            if (refToken == null)
-                return (JObject)refContainer;
-            return Lookup(refs, (long)refContainer["ref"]) ?? (JObject)refContainer;
+            if (refToken != null)
+                return Lookup(refs, (long)refToken);
+            return (JObject)refContainer;
         }
     }
 }

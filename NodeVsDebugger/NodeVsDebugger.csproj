@@ -77,6 +77,7 @@
     <Compile Include="NodeScript.cs" />
     <Compile Include="NodeThreadContext.cs" />
     <Compile Include="ScriptMapping.cs" />
+    <Compile Include="SourceMap.cs" />
     <Compile Include="TempScriptCache.cs" />
     <Compile Include="Tools.cs" />
     <Compile Include="V8Connection.cs" />

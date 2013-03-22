@@ -275,6 +275,16 @@ namespace NodeVsDebugger_Package
             return null;
         }
 
+        bool IsSupportedRunDocument(EnvDTE.Document doc)
+        {
+            var lang = doc.Language;
+            if (lang == "JavaScript" || lang == "TypeScript")
+                return true;
+
+            var ext = Path.GetExtension(doc.FullName);
+            return ext == ".js" || ext == ".ts";
+        }
+
         private void MenuItemCallbackDocument(object sender, EventArgs e)
         {
             if (applicationObject.Mode == EnvDTE.vsIDEMode.vsIDEModeDebug) {
@@ -282,7 +292,7 @@ namespace NodeVsDebugger_Package
                 return;
             }
             var doc = applicationObject.ActiveDocument;
-            if (doc != null && (doc.Language == "JavaScript" || doc.FullName.EndsWith(".js", StringComparison.InvariantCultureIgnoreCase))) {
+            if (doc != null && IsSupportedRunDocument(doc)) {
                 // TODO: should we save on debug?
                 LaunchDebugTarget(doc.FullName, null);
             } else {

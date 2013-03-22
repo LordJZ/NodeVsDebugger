@@ -16,7 +16,9 @@ namespace NodeVsDebugger
         readonly NodeThreadContext m_threadContext;
 
         private string m_functionName;
+        private string m_documentName;
         private uint m_lineNum;
+        private uint m_colNum;
         private bool m_hasSource = true;
 
         // An array of this frame's parameters
@@ -33,6 +35,11 @@ namespace NodeVsDebugger
             // Try to get source information for this location. If symbols for this file have not been found, this will fail.
             m_functionName = m_threadContext.func.AnyName;
             m_lineNum = (uint)m_threadContext.line;
+            m_colNum = (uint)m_threadContext.column;
+
+            engine.DebuggedProcess.TranslateGeneratedToSource(
+                m_threadContext.script, out m_documentName,
+                ref m_lineNum, ref m_colNum);
         }
 
         #region Non-interface methods
@@ -183,10 +190,10 @@ namespace NodeVsDebugger
         {
             docContext = null;
             try {
-                if (m_hasSource) {
+                if (m_hasSource)
+                {
                     // Assume all lines begin and end at the beginning of the line.
-                    var documentName = m_engine.DebuggedProcess.GetLocalFile(m_threadContext.script, fetchIfNotExists: true);
-                    docContext = new AD7DocumentContext(documentName, m_lineNum, m_lineNum);
+                    docContext = new AD7DocumentContext(m_documentName, m_lineNum, m_lineNum);
                     return Constants.S_OK;
                 }
             } catch (Exception e) {

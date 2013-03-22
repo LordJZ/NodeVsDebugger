@@ -11,6 +11,7 @@
 // See a license.txt file for the full text of the license.
 //
 
+using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
@@ -20,22 +21,18 @@ namespace NodeVsDebugger
     [DebuggerDisplay("{Id} {Name}")]
     public class NodeScript : IEquatable<NodeScript>
     {
-        private JObject jObject;
+        public readonly string Name;
+        public readonly int Id;
 
-        public string Name;
-        public int Id;
-        public int LineOffset;
-        public int ColumnOffset;
-        public string LocalFile;
+        public readonly string LocalFile;
+        public readonly SourceMap SourceMap;
 
-        public NodeScript(int id, string name, JObject jObject)
+        public NodeScript(int id, string name, string local, SourceMap sourceMap)
         {
-            this.jObject = jObject;
-
-            Id = id;
-            Name = name;
-            LineOffset = (int)jObject["lineOffset"];
-            ColumnOffset = (int)jObject["columnOffset"];
+            this.Id = id;
+            this.Name = name;
+            this.LocalFile = local;
+            this.SourceMap = sourceMap;
         }
 
         bool IEquatable<NodeScript>.Equals(NodeScript other)

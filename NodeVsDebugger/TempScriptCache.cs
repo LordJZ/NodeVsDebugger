@@ -12,6 +12,7 @@
 //
 
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 
 namespace NodeVsDebugger
@@ -31,16 +32,16 @@ namespace NodeVsDebugger
             Directory.CreateDirectory(tmpDir);
         }
 
-        public void SaveScript(NodeScript script, string source)
+        public string SaveScript(int id, string name, string source)
         {
-            var path = Path.Combine(tmpDir, script.Id.ToString());
+            var path = Path.Combine(tmpDir, id.ToString(CultureInfo.InvariantCulture));
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);
-            path = Path.Combine(path, Path.GetFileName(script.Name));
+            path = Path.Combine(path, Path.GetFileName(name));
             File.WriteAllText(path, source);
             File.SetAttributes(path, FileAttributes.Temporary | FileAttributes.ReadOnly);
-            script.LocalFile = path;
             tmpFiles.Add(path);
+            return path;
         }
 
         public void Cleanup()
